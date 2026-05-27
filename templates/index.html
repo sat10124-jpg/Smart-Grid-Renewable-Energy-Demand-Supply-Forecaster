@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Grid - Renewable Energy Demand and Supply Forecaster</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+  <style>
+    /* ── Reset & base ───────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #060c1a;
+      --bg-card:     #0b1628;
+      --bg-panel:    #0e1e38;
+      --border:      #1a3050;
+      --green:       #00e676;
+      --green-dim:   #00b85d;
+      --cyan:        #00cfff;
+      --text:        #e8f0fc;
+      --muted:       #6b8aaa;
+      --font:        'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Navbar ─────────────────────────────────────────────────────────── */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(6, 12, 26, 0.96);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-logo .pulse-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse-anim 2.2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse-anim {
+      0%, 100% { opacity: 1;   box-shadow: 0 0 8px  var(--green); }
+      50%       { opacity: 0.5; box-shadow: 0 0 18px var(--green); }
+    }
+
+    .nav-right { display: flex; align-items: center; gap: 1rem; }
+
+    .nav-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--green);
+      border: 1px solid var(--green-dim);
+      padding: 0.22rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(0, 230, 118, 0.07);
+    }
+
+    .nav-model {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Hero ───────────────────────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      padding: 5.5rem 2.5rem 4.5rem;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero-grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(0, 230, 118, 0.10) 1px, transparent 1px);
+      background-size: 36px 36px;
+      pointer-events: none;
+    }
+
+    .hero-glow {
+      position: absolute;
+      top: -30%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 500px;
+      background: radial-gradient(ellipse, rgba(0, 230, 118, 0.065) 0%, transparent 68%);
+      pointer-events: none;
+    }
+
+    .hero-content { position: relative; z-index: 1; }
+
+    .hero-tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 1.3rem;
+    }
+
+    .hero-title {
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.12;
+      letter-spacing: -0.025em;
+      margin-bottom: 1rem;
+    }
+
+    .hero-title .accent {
+      color: var(--green);
+      text-shadow: 0 0 36px rgba(0, 230, 118, 0.45);
+    }
+
+    .hero-sub {
+      font-size: 1rem;
+      color: var(--muted);
+      max-width: 580px;
+      margin: 0 auto 3.5rem;
+      line-height: 1.75;
+    }
+
+    /* ── Metric cards ───────────────────────────────────────────────────── */
+    .metrics-row {
+      display: flex;
+      justify-content: center;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 1.6rem 2.2rem;
+      min-width: 190px;
+      text-align: center;
+      cursor: default;
+      transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(0, 230, 118, 0.4);
+      box-shadow: 0 16px 48px rgba(0, 230, 118, 0.09);
+    }
+
+    .metric-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.55rem;
+    }
+
+    .metric-value {
+      font-size: 2.15rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+      color: var(--green);
+      text-shadow: 0 0 22px rgba(0, 230, 118, 0.4);
+      min-height: 2.6rem;
+    }
+
+    .metric-value.loading-val { color: var(--border); }
+
+    .metric-unit {
+      font-size: 0.73rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    /* ── Divider ────────────────────────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0;
+    }
+
+    /* ── Main ───────────────────────────────────────────────────────────── */
+    .main {
+      max-width: 1340px;
+      margin: 0 auto;
+      padding: 3.5rem 2rem 5rem;
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.75rem 1.75rem 1.25rem;
+      margin-bottom: 2.25rem;
+      overflow: hidden;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.9rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .chart-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .chart-icon.green-icon { background: rgba(0, 230, 118, 0.12); }
+    .chart-icon.cyan-icon  { background: rgba(0, 207, 255, 0.12); }
+
+    .chart-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 0.2rem;
+    }
+
+    .chart-subtitle {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    .legend-row {
+      display: flex;
+      gap: 1.4rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.9rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.77rem;
+      color: var(--muted);
+    }
+
+    .legend-line {
+      width: 22px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .plotly-wrap { width: 100%; height: 430px; }
+
+    /* Loading skeleton */
+    .chart-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 430px;
+      gap: 0.9rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .spinner {
+      width: 34px;
+      height: 34px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.75rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    footer a { color: var(--green); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    .footer-right { display: flex; gap: 1.4rem; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .navbar  { padding: 1rem 1.2rem; }
+      .hero    { padding: 3.5rem 1.2rem 3rem; }
+      .main    { padding: 2rem 1rem 3.5rem; }
+      .metrics-row { gap: 0.9rem; }
+      .metric-card { min-width: 140px; padding: 1.2rem 1.4rem; }
+      .metric-value { font-size: 1.75rem; }
+      footer   { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navbar ──────────────────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <a class="nav-logo" href="#">
+    <span class="pulse-dot"></span>
+    Smart Grid - Renewable Energy Demand and Supply Forecaster
+  </a>
+  <div class="nav-right">
+    <span class="nav-model">XGBoost · OPSD Germany</span>
+    <span class="nav-badge">Live Model</span>
+  </div>
+</nav>
+
+<!-- ── Hero ───────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-grid-bg"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <p class="hero-tag">Renewable Energy &nbsp;·&nbsp; Demand &amp; Supply Forecasting</p>
+    <h1 class="hero-title">
+      Smart Grid<br>
+      <span class="accent">Renewable Energy</span> Forecaster
+    </h1>
+    <p class="hero-sub">
+      XGBoost-powered solar generation forecasting trained on hourly German grid data
+      from Open Power System Data. Predictions evaluated on a held-out 20&nbsp;% test set.
+    </p>
+
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Model RMSE</div>
+        <div class="metric-value loading-val" id="metric-rmse">—</div>
+        <div class="metric-unit">Megawatts (MW)</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">R² Score</div>
+        <div class="metric-value loading-val" id="metric-r2">—</div>
+        <div class="metric-unit">Coefficient of Determination</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Test Observations</div>
+        <div class="metric-value loading-val" id="metric-n">—</div>
+        <div class="metric-unit">Hourly data points</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── Charts ─────────────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- Chart 1: Actual vs Predicted Solar Generation -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-icon green-icon">⚡</div>
+      <div class="chart-meta">
+        <div class="chart-title">Solar Generation — Actual vs. Predicted</div>
+        <div class="chart-subtitle">German grid &nbsp;·&nbsp; Hourly resolution &nbsp;·&nbsp; Test set (20 %)</div>
+      </div>
+    </div>
+    <div class="legend-row">
+      <div class="legend-item">
+        <div class="legend-line" style="background:#00e676;"></div>
+        Actual
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#38bdf8; opacity:0.85;"></div>
+        XGBoost Predicted
+      </div>
+    </div>
+    <div id="chart-solar" class="plotly-wrap">
+      <div class="chart-loading"><div class="spinner"></div><span>Training model, please wait…</span></div>
+    </div>
+  </div>
+
+  <!-- Chart 2: Grid Load Demand -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-icon cyan-icon">📈</div>
+      <div class="chart-meta">
+        <div class="chart-title">Grid Load Demand</div>
+        <div class="chart-subtitle">ENTSO-E Transparency Platform &nbsp;·&nbsp; Same test period</div>
+      </div>
+    </div>
+    <div class="legend-row">
+      <div class="legend-item">
+        <div class="legend-line" style="background:#00cfff;"></div>
+        Grid Load (MW)
+      </div>
+    </div>
+    <div id="chart-load" class="plotly-wrap">
+      <div class="chart-loading"><div class="spinner"></div><span>Loading demand data…</span></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────── -->
+<footer>
+  <span>Smart Grid - Renewable Energy Demand and Supply Forecaster</span>
+  <div class="footer-right">
+    <span>Data: <a href="https://open-power-system-data.org" target="_blank" rel="noopener">Open Power System Data</a></span>
+    <span>Model: XGBoost &nbsp;·&nbsp; scikit-learn</span>
+  </div>
+</footer>
+
+<script>
+// ── Shared layout defaults ────────────────────────────────────────────────────
+const SHARED_LAYOUT = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor:  'rgba(11,22,40,0.55)',
+  font: {
+    family: "'Inter','Segoe UI',system-ui,sans-serif",
+    color:  '#6b8aaa',
+    size:   12,
+  },
+  margin: { t: 12, r: 24, b: 52, l: 68 },
+  xaxis: {
+    gridcolor:     'rgba(26,48,80,0.7)',
+    linecolor:     'rgba(26,48,80,0.8)',
+    tickcolor:     'rgba(26,48,80,0)',
+    zerolinecolor: 'rgba(26,48,80,0.7)',
+    tickfont:      { color: '#6b8aaa' },
+  },
+  yaxis: {
+    gridcolor:     'rgba(26,48,80,0.7)',
+    linecolor:     'rgba(26,48,80,0.8)',
+    tickcolor:     'rgba(26,48,80,0)',
+    zerolinecolor: 'rgba(26,48,80,0.7)',
+    tickfont:      { color: '#6b8aaa' },
+    title:         { standoff: 14 },
+  },
+  legend: {
+    bgcolor:     'rgba(11,22,40,0.75)',
+    bordercolor: 'rgba(26,48,80,0.9)',
+    borderwidth: 1,
+    font:        { color: '#94a3b8', size: 12 },
+    x: 0.01, y: 0.99,
+    xanchor: 'left', yanchor: 'top',
+  },
+  hovermode: 'x unified',
+  hoverlabel: {
+    bgcolor:     '#0e1e38',
+    bordercolor: '#1a3050',
+    font:        { color: '#e8f0fc', size: 12 },
+  },
+  dragmode: 'zoom',
+};
+
+const PLOTLY_CONFIG = {
+  responsive: true,
+  displayModeBar: true,
+  modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toImage'],
+  displaylogo: false,
+  toImageButtonOptions: { format: 'png', scale: 2 },
+};
+
+// ── Animate metric value ──────────────────────────────────────────────────────
+function animateCount(el, target, decimals, suffix) {
+  el.classList.remove('loading-val');
+  const duration = 900;
+  const start    = performance.now();
+  const from     = 0;
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    const val  = from + (target - from) * ease;
+    el.textContent = (decimals > 0 ? val.toFixed(decimals) : Math.round(val).toLocaleString()) + (suffix || '');
+    if (t < 1) requestAnimationFrame(step);
+    else el.textContent = (decimals > 0 ? target.toFixed(decimals) : target.toLocaleString()) + (suffix || '');
+  }
+  requestAnimationFrame(step);
+}
+
+// ── Fetch data + render ───────────────────────────────────────────────────────
+fetch('/api/data')
+  .then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  })
+  .then(data => {
+    const { timestamps, actual, predicted, load, metrics } = data;
+
+    // Metric cards
+    animateCount(document.getElementById('metric-rmse'), metrics.rmse,    0);
+    animateCount(document.getElementById('metric-r2'),   metrics.r2,      4);
+    animateCount(document.getElementById('metric-n'),    metrics.n_points, 0);
+
+    // ── Chart 1: Solar Actual vs Predicted ─────────────────────────────
+    const solarTraces = [
+      {
+        x: timestamps,
+        y: actual,
+        name: 'Actual',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: '#00e676', width: 1.4 },
+        hovertemplate: '<b>Actual</b>: %{y:,.0f} MW<extra></extra>',
+      },
+      {
+        x: timestamps,
+        y: predicted,
+        name: 'XGBoost Predicted',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: '#38bdf8', width: 1.4, dash: 'dot' },
+        hovertemplate: '<b>Predicted</b>: %{y:,.0f} MW<extra></extra>',
+      },
+    ];
+
+    Plotly.newPlot('chart-solar', solarTraces, {
+      ...SHARED_LAYOUT,
+      yaxis: {
+        ...SHARED_LAYOUT.yaxis,
+        title: { text: 'Solar Generation (MW)', font: { color: '#6b8aaa', size: 12 }, standoff: 14 },
+      },
+    }, PLOTLY_CONFIG);
+
+    // ── Chart 2: Grid Load ──────────────────────────────────────────────
+    const loadTraces = [
+      {
+        x: timestamps,
+        y: load,
+        name: 'Grid Load',
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: '#00cfff', width: 1.4 },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(0,207,255,0.04)',
+        hovertemplate: '<b>Load</b>: %{y:,.0f} MW<extra></extra>',
+      },
+    ];
+
+    Plotly.newPlot('chart-load', loadTraces, {
+      ...SHARED_LAYOUT,
+      yaxis: {
+        ...SHARED_LAYOUT.yaxis,
+        title: { text: 'Electricity Load (MW)', font: { color: '#6b8aaa', size: 12 }, standoff: 14 },
+      },
+    }, PLOTLY_CONFIG);
+  })
+  .catch(err => {
+    console.error('Data fetch failed:', err);
+    ['chart-solar', 'chart-load'].forEach(id => {
+      document.getElementById(id).innerHTML = `
+        <div class="chart-loading">
+          <span style="color:#ff5252;font-size:0.9rem;">
+            ⚠ Failed to load data — is the Flask server running on port 5000?
+          </span>
+          <span style="font-size:0.75rem;">Error: ${err.message}</span>
+        </div>`;
+    });
+  });
+</script>
+</body>
+</html>

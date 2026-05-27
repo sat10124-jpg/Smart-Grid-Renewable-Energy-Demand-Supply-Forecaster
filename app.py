@@ -11,7 +11,7 @@ from metrics import evaluate_model
 app = Flask(__name__)
 
 # ── Run pipeline once at startup ──────────────────────────────────────────────
-print("Initializing Smart Grid AI pipeline…")
+print("Initializing Smart Grid - Renewable Energy Demand and Supply Forecaster pipeline…")
 download_data()
 _cleaned     = load_and_clean()
 _engineered  = engineer_features(_cleaned)
