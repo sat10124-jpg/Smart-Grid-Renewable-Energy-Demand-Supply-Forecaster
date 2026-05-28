@@ -3,23 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart Grid - Renewable Energy Demand and Supply Forecaster</title>
+  <title>Smart Grid AI — Renewable Energy Forecaster</title>
+  <!-- Inter (UI) + Fira Code (metrics/mono) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet" />
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
   <style>
     /* ── Reset & base ───────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:          #060c1a;
-      --bg-card:     #0b1628;
-      --bg-panel:    #0e1e38;
-      --border:      #1a3050;
-      --green:       #00e676;
-      --green-dim:   #00b85d;
-      --cyan:        #00cfff;
-      --text:        #e8f0fc;
-      --muted:       #6b8aaa;
-      --font:        'Inter', 'Segoe UI', system-ui, sans-serif;
+      /* ── Slate-900 design token scale (shadcn default dark) ─────────── */
+      --bg:              #0f172a;              /* slate-900 */
+      --bg-card:         #1e293b;              /* slate-800 */
+      --bg-panel:        #293548;              /* slate-750 */
+      --border:          rgba(51,65,85,0.8);   /* slate-700 */
+      --border-subtle:   rgba(51,65,85,0.45);  /* slate-700/45 */
+
+      /* ── Typography ──────────────────────────────────────────────────── */
+      --text:            #f1f5f9;   /* slate-100 */
+      --text-muted:      #94a3b8;   /* slate-400 */
+      --text-dim:        #64748b;   /* slate-500 */
+
+      /* ── Accent colors — muted, non-neon ────────────────────────────── */
+      --indigo:          #818cf8;                    /* indigo-400 */
+      --indigo-dim:      #6366f1;                    /* indigo-500 */
+      --indigo-bg:       rgba(99,102,241,0.09);      /* indigo tint */
+      --amber:           #fbbf24;                    /* amber-400 — solar */
+      --amber-bg:        rgba(251,191,36,0.09);      /* amber tint */
+      --emerald:         #34d399;                    /* emerald-400 — load */
+      --emerald-bg:      rgba(52,211,153,0.09);      /* emerald tint */
+
+      /* ── Shadow system — realistic depth, zero neon ──────────────────── */
+      --shadow-sm:       0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+      --shadow-md:       0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2);
+      --shadow-hover:    0 8px 28px rgba(0,0,0,0.55), 0 4px 8px rgba(0,0,0,0.3);
+
+      /* ── Font stacks ──────────────────────────────────────────────────── */
+      --font:            'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --font-mono:       'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+
+      --chart-h:         430px;
     }
 
     html { font-size: 16px; scroll-behavior: smooth; }
@@ -30,69 +55,86 @@
       font-family: var(--font);
       min-height: 100vh;
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
-    /* ── Navbar ─────────────────────────────────────────────────────────── */
+    /* ── Focus ring ──────────────────────────────────────────────────────── */
+    :focus-visible {
+      outline: 2px solid var(--indigo);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    /* ── Shimmer skeleton ────────────────────────────────────────────────── */
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Pulse dot — opacity only, no glow ──────────────────────────────── */
+    @keyframes pulse-anim {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
+    }
+
+    /* ── Navbar ──────────────────────────────────────────────────────────── */
     .navbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 1rem 2.5rem;
       border-bottom: 1px solid var(--border);
-      background: rgba(6, 12, 26, 0.96);
-      backdrop-filter: blur(12px);
+      background: rgba(15,23,42,0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       position: sticky;
       top: 0;
-      z-index: 100;
+      z-index: 50;
     }
 
     .nav-logo {
       display: flex;
       align-items: center;
-      gap: 0.55rem;
-      font-size: 1.05rem;
+      gap: 0.6rem;
+      font-size: 1rem;
       font-weight: 700;
-      letter-spacing: 0.03em;
+      letter-spacing: -0.01em;
       color: var(--text);
       text-decoration: none;
+      cursor: pointer;
     }
 
     .nav-logo .pulse-dot {
-      width: 9px;
-      height: 9px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 8px var(--green);
-      animation: pulse-anim 2.2s ease-in-out infinite;
+      background: var(--emerald);
+      animation: pulse-anim 2.4s ease-in-out 3;
       flex-shrink: 0;
-    }
-
-    @keyframes pulse-anim {
-      0%, 100% { opacity: 1;   box-shadow: 0 0 8px  var(--green); }
-      50%       { opacity: 0.5; box-shadow: 0 0 18px var(--green); }
     }
 
     .nav-right { display: flex; align-items: center; gap: 1rem; }
 
     .nav-badge {
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: 600;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--green);
-      border: 1px solid var(--green-dim);
-      padding: 0.22rem 0.7rem;
+      color: var(--indigo);
+      border: 1px solid rgba(99,102,241,0.35);
+      padding: 0.2rem 0.65rem;
       border-radius: 999px;
-      background: rgba(0, 230, 118, 0.07);
+      background: var(--indigo-bg);
     }
 
     .nav-model {
       font-size: 0.72rem;
-      color: var(--muted);
-      letter-spacing: 0.04em;
+      color: var(--text-dim);
+      letter-spacing: 0.02em;
     }
 
-    /* ── Hero ───────────────────────────────────────────────────────────── */
+    /* ── Hero ────────────────────────────────────────────────────────────── */
     .hero {
       position: relative;
       padding: 5.5rem 2.5rem 4.5rem;
@@ -100,22 +142,24 @@
       overflow: hidden;
     }
 
+    /* Subtle dot grid — very low opacity, non-neon */
     .hero-grid-bg {
       position: absolute;
       inset: 0;
-      background-image: radial-gradient(circle, rgba(0, 230, 118, 0.10) 1px, transparent 1px);
+      background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
       background-size: 36px 36px;
       pointer-events: none;
     }
 
+    /* Barely-there depth wash — not a glow */
     .hero-glow {
       position: absolute;
-      top: -30%;
+      top: -20%;
       left: 50%;
       transform: translateX(-50%);
-      width: 800px;
+      width: 860px;
       height: 500px;
-      background: radial-gradient(ellipse, rgba(0, 230, 118, 0.065) 0%, transparent 68%);
+      background: radial-gradient(ellipse, rgba(99,102,241,0.05) 0%, transparent 68%);
       pointer-events: none;
     }
 
@@ -123,36 +167,38 @@
 
     .hero-tag {
       display: inline-block;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 600;
-      letter-spacing: 0.15em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--green);
-      margin-bottom: 1.3rem;
+      color: var(--text-dim);
+      margin-bottom: 1.4rem;
     }
 
     .hero-title {
       font-size: clamp(2.2rem, 5vw, 3.5rem);
       font-weight: 800;
-      line-height: 1.12;
-      letter-spacing: -0.025em;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      color: var(--text);
       margin-bottom: 1rem;
     }
 
+    /* Accent word — clean indigo, zero text-shadow */
     .hero-title .accent {
-      color: var(--green);
-      text-shadow: 0 0 36px rgba(0, 230, 118, 0.45);
+      color: var(--indigo);
     }
 
     .hero-sub {
       font-size: 1rem;
-      color: var(--muted);
-      max-width: 580px;
+      color: var(--text-muted);
+      max-width: 560px;
       margin: 0 auto 3.5rem;
       line-height: 1.75;
+      font-weight: 400;
     }
 
-    /* ── Metric cards ───────────────────────────────────────────────────── */
+    /* ── Metric cards ────────────────────────────────────────────────────── */
     .metrics-row {
       display: flex;
       justify-content: center;
@@ -163,55 +209,67 @@
     .metric-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 18px;
+      border-radius: 16px;
       padding: 1.6rem 2.2rem;
       min-width: 190px;
       text-align: center;
       cursor: default;
-      transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
     .metric-card:hover {
-      transform: translateY(-5px);
-      border-color: rgba(0, 230, 118, 0.4);
-      box-shadow: 0 16px 48px rgba(0, 230, 118, 0.09);
+      transform: translateY(-4px);
+      border-color: rgba(129,140,248,0.3);
+      box-shadow: var(--shadow-hover);
     }
 
     .metric-label {
-      font-size: 0.68rem;
+      font-size: 0.67rem;
       font-weight: 700;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--muted);
+      color: var(--text-dim);
       margin-bottom: 0.55rem;
     }
 
+    /* Clean indigo metric values — no text-shadow */
     .metric-value {
-      font-size: 2.15rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
+      font-family: var(--font-mono);
+      font-size: 2.1rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
       font-variant-numeric: tabular-nums;
-      color: var(--green);
-      text-shadow: 0 0 22px rgba(0, 230, 118, 0.4);
+      color: var(--indigo);
       min-height: 2.6rem;
     }
 
-    .metric-value.loading-val { color: var(--border); }
-
-    .metric-unit {
-      font-size: 0.73rem;
-      color: var(--muted);
-      margin-top: 0.3rem;
+    .metric-value.loading-val {
+      color: transparent;
+      background: linear-gradient(90deg, var(--border) 25%, var(--bg-panel) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.6s ease-in-out infinite;
+      border-radius: 6px;
+      width: 5rem;
+      height: 2rem;
+      margin: 0.3rem auto;
     }
 
-    /* ── Divider ────────────────────────────────────────────────────────── */
+    .metric-unit {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-top: 0.3rem;
+      font-weight: 400;
+    }
+
+    /* ── Divider ─────────────────────────────────────────────────────────── */
     .divider {
       border: none;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--border-subtle);
       margin: 0;
     }
 
-    /* ── Main ───────────────────────────────────────────────────────────── */
+    /* ── Main ────────────────────────────────────────────────────────────── */
     .main {
       max-width: 1340px;
       margin: 0 auto;
@@ -221,10 +279,11 @@
     .chart-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 20px;
+      border-radius: 18px;
       padding: 1.75rem 1.75rem 1.25rem;
-      margin-bottom: 2.25rem;
+      margin-bottom: 2rem;
       overflow: hidden;
+      box-shadow: var(--shadow-sm);
     }
 
     .chart-header {
@@ -241,24 +300,26 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
       flex-shrink: 0;
       margin-top: 1px;
     }
 
-    .chart-icon.green-icon { background: rgba(0, 230, 118, 0.12); }
-    .chart-icon.cyan-icon  { background: rgba(0, 207, 255, 0.12); }
+    .chart-icon svg { width: 20px; height: 20px; }
+
+    .chart-icon.solar-icon { background: var(--amber-bg); }
+    .chart-icon.load-icon  { background: var(--indigo-bg); }
 
     .chart-title {
-      font-size: 1.05rem;
+      font-size: 1rem;
       font-weight: 700;
       color: var(--text);
       margin-bottom: 0.2rem;
+      letter-spacing: -0.01em;
     }
 
     .chart-subtitle {
-      font-size: 0.76rem;
-      color: var(--muted);
+      font-size: 0.75rem;
+      color: var(--text-dim);
     }
 
     .legend-row {
@@ -272,8 +333,8 @@
       display: flex;
       align-items: center;
       gap: 0.45rem;
-      font-size: 0.77rem;
-      color: var(--muted);
+      font-size: 0.76rem;
+      color: var(--text-muted);
     }
 
     .legend-line {
@@ -282,82 +343,99 @@
       border-radius: 2px;
     }
 
-    .plotly-wrap { width: 100%; height: 430px; }
-
-    /* Loading skeleton */
-    .chart-loading {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 430px;
-      gap: 0.9rem;
-      color: var(--muted);
-      font-size: 0.85rem;
+    /* Chart skeleton */
+    .chart-skeleton {
+      width: 100%;
+      height: var(--chart-h);
+      background: linear-gradient(90deg, var(--bg-panel) 25%, var(--border) 50%, var(--bg-panel) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.8s ease-in-out infinite;
+      border-radius: 10px;
     }
 
-    .spinner {
-      width: 34px;
-      height: 34px;
-      border: 3px solid var(--border);
-      border-top-color: var(--green);
-      border-radius: 50%;
-      animation: spin 0.75s linear infinite;
-    }
+    .plotly-wrap { width: 100%; height: var(--chart-h); }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Footer ─────────────────────────────────────────────────────────── */
+    /* ── Footer ──────────────────────────────────────────────────────────── */
     footer {
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--border-subtle);
       padding: 1.75rem 2.5rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 0.75rem;
-      font-size: 0.75rem;
-      color: var(--muted);
+      font-size: 0.74rem;
+      color: var(--text-dim);
     }
 
-    footer a { color: var(--green); text-decoration: none; }
+    footer a { color: var(--indigo); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
 
-    .footer-right { display: flex; gap: 1.4rem; }
+    .footer-right { display: flex; gap: 1.4rem; flex-wrap: wrap; }
 
-    /* ── Responsive ─────────────────────────────────────────────────────── */
+    /* ── Responsive — mobile (<640px) ────────────────────────────────────── */
     @media (max-width: 640px) {
-      .navbar  { padding: 1rem 1.2rem; }
-      .hero    { padding: 3.5rem 1.2rem 3rem; }
-      .main    { padding: 2rem 1rem 3.5rem; }
+      :root { --chart-h: 260px; }
+      .navbar      { padding: 0.85rem 1.2rem; }
+      .nav-model   { display: none; }
+      .hero        { padding: 3rem 1.2rem 2.5rem; }
+      .main        { padding: 1.75rem 1rem 3rem; }
       .metrics-row { gap: 0.9rem; }
       .metric-card { min-width: 140px; padding: 1.2rem 1.4rem; }
       .metric-value { font-size: 1.75rem; }
-      footer   { flex-direction: column; align-items: flex-start; }
+      footer       { flex-direction: column; align-items: flex-start; }
+    }
+
+    /* ── Responsive — tablet (641–768px) ─────────────────────────────────── */
+    @media (min-width: 641px) and (max-width: 768px) {
+      :root { --chart-h: 320px; }
+      .navbar { padding: 1rem 1.75rem; }
+      .hero   { padding: 4rem 2rem 3.5rem; }
+      .main   { padding: 2.5rem 1.5rem 4rem; }
+    }
+
+    /* ── Responsive — laptop (769–1024px) ────────────────────────────────── */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      :root { --chart-h: 370px; }
+      .main { padding: 3rem 2rem 4.5rem; }
+    }
+
+    /* ── Reduced motion ──────────────────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .metric-value.loading-val,
+      .chart-skeleton {
+        background: var(--border);
+        animation: none;
+      }
     }
   </style>
 </head>
 <body>
 
 <!-- ── Navbar ──────────────────────────────────────────────────────────────── -->
-<nav class="navbar">
-  <a class="nav-logo" href="#">
-    <span class="pulse-dot"></span>
-    Smart Grid - Renewable Energy Demand and Supply Forecaster
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <a class="nav-logo" href="#" aria-label="Smart Grid AI — home">
+    <span class="pulse-dot" aria-hidden="true"></span>
+    Smart Grid AI
   </a>
   <div class="nav-right">
     <span class="nav-model">XGBoost · OPSD Germany</span>
-    <span class="nav-badge">Live Model</span>
+    <span class="nav-badge" aria-label="Live model active">Live Model</span>
   </div>
 </nav>
 
 <!-- ── Hero ───────────────────────────────────────────────────────────────── -->
-<section class="hero">
-  <div class="hero-grid-bg"></div>
-  <div class="hero-glow"></div>
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="hero-grid-bg" aria-hidden="true"></div>
+  <div class="hero-glow" aria-hidden="true"></div>
   <div class="hero-content">
     <p class="hero-tag">Renewable Energy &nbsp;·&nbsp; Demand &amp; Supply Forecasting</p>
-    <h1 class="hero-title">
+    <h1 class="hero-title" id="hero-heading">
       Smart Grid<br>
       <span class="accent">Renewable Energy</span> Forecaster
     </h1>
@@ -366,20 +444,20 @@
       from Open Power System Data. Predictions evaluated on a held-out 20&nbsp;% test set.
     </p>
 
-    <div class="metrics-row">
-      <div class="metric-card">
+    <div class="metrics-row" role="list" aria-label="Model performance metrics">
+      <div class="metric-card" role="listitem">
         <div class="metric-label">Model RMSE</div>
-        <div class="metric-value loading-val" id="metric-rmse">—</div>
+        <div class="metric-value loading-val" id="metric-rmse" aria-live="polite" aria-label="Root mean square error in megawatts">—</div>
         <div class="metric-unit">Megawatts (MW)</div>
       </div>
-      <div class="metric-card">
+      <div class="metric-card" role="listitem">
         <div class="metric-label">R² Score</div>
-        <div class="metric-value loading-val" id="metric-r2">—</div>
+        <div class="metric-value loading-val" id="metric-r2" aria-live="polite" aria-label="R-squared coefficient of determination">—</div>
         <div class="metric-unit">Coefficient of Determination</div>
       </div>
-      <div class="metric-card">
+      <div class="metric-card" role="listitem">
         <div class="metric-label">Test Observations</div>
-        <div class="metric-value loading-val" id="metric-n">—</div>
+        <div class="metric-value loading-val" id="metric-n" aria-live="polite" aria-label="Number of hourly test data points">—</div>
         <div class="metric-unit">Hourly data points</div>
       </div>
     </div>
@@ -394,48 +472,70 @@
   <!-- Chart 1: Actual vs Predicted Solar Generation -->
   <div class="chart-card">
     <div class="chart-header">
-      <div class="chart-icon green-icon">⚡</div>
+      <div class="chart-icon solar-icon" aria-hidden="true">
+        <!-- Lucide: sun -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+      </div>
       <div class="chart-meta">
         <div class="chart-title">Solar Generation — Actual vs. Predicted</div>
         <div class="chart-subtitle">German grid &nbsp;·&nbsp; Hourly resolution &nbsp;·&nbsp; Test set (20 %)</div>
       </div>
     </div>
-    <div class="legend-row">
+    <div class="legend-row" aria-label="Chart legend">
       <div class="legend-item">
-        <div class="legend-line" style="background:#00e676;"></div>
+        <div class="legend-line" style="background:#fbbf24;" aria-hidden="true"></div>
         Actual
       </div>
       <div class="legend-item">
-        <div class="legend-line" style="background:#38bdf8; opacity:0.85;"></div>
+        <div class="legend-line" style="background:#818cf8; opacity:0.9;" aria-hidden="true"></div>
         XGBoost Predicted
       </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:rgba(129,140,248,0.4); height:8px;" aria-hidden="true"></div>
+        Confidence Band (±15%)
+      </div>
     </div>
-    <div id="chart-solar" class="plotly-wrap"></div>
+    <div id="chart-solar-skeleton" class="chart-skeleton" role="status" aria-label="Loading solar chart"></div>
+    <div id="chart-solar" class="plotly-wrap" style="display:none;" aria-label="Solar generation chart"></div>
   </div>
 
   <!-- Chart 2: Grid Load Demand -->
   <div class="chart-card">
     <div class="chart-header">
-      <div class="chart-icon cyan-icon">📈</div>
+      <div class="chart-icon load-icon" aria-hidden="true">
+        <!-- Lucide: bar-chart-3 -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/>
+          <path d="M7 16v-3"/>
+          <path d="M11 16V8"/>
+          <path d="M15 16v-6"/>
+        </svg>
+      </div>
       <div class="chart-meta">
         <div class="chart-title">Grid Load Demand</div>
         <div class="chart-subtitle">ENTSO-E Transparency Platform &nbsp;·&nbsp; Same test period</div>
       </div>
     </div>
-    <div class="legend-row">
+    <div class="legend-row" aria-label="Chart legend">
       <div class="legend-item">
-        <div class="legend-line" style="background:#00cfff;"></div>
+        <div class="legend-line" style="background:#34d399;" aria-hidden="true"></div>
         Grid Load (MW)
       </div>
     </div>
-    <div id="chart-load" class="plotly-wrap"></div>
+    <div id="chart-load-skeleton" class="chart-skeleton" role="status" aria-label="Loading grid load chart"></div>
+    <div id="chart-load" class="plotly-wrap" style="display:none;" aria-label="Grid load demand chart"></div>
   </div>
 
 </main>
 
 <!-- ── Footer ─────────────────────────────────────────────────────────────── -->
 <footer>
-  <span>Smart Grid - Renewable Energy Demand and Supply Forecaster</span>
+  <span>Smart Grid AI — Renewable Energy Demand &amp; Supply Forecaster</span>
   <div class="footer-right">
     <span>Data: <a href="https://open-power-system-data.org" target="_blank" rel="noopener">Open Power System Data</a></span>
     <span>Model: XGBoost &nbsp;·&nbsp; scikit-learn</span>
@@ -443,44 +543,46 @@
 </footer>
 
 <script>
-// ── Shared layout defaults ────────────────────────────────────────────────────
+// ── Shared Plotly layout — slate-900 token palette ───────────────────────────
 const SHARED_LAYOUT = {
   paper_bgcolor: 'rgba(0,0,0,0)',
-  plot_bgcolor:  'rgba(11,22,40,0.55)',
+  plot_bgcolor:  'rgba(30,41,59,0.5)',   /* slate-800 at 50% */
   font: {
     family: "'Inter','Segoe UI',system-ui,sans-serif",
-    color:  '#6b8aaa',
+    color:  '#94a3b8',                   /* slate-400 */
     size:   12,
   },
-  margin: { t: 12, r: 24, b: 52, l: 68 },
+  margin: { t: 12, r: 48, b: 52, l: 68 },
   xaxis: {
-    gridcolor:     'rgba(26,48,80,0.7)',
-    linecolor:     'rgba(26,48,80,0.8)',
-    tickcolor:     'rgba(26,48,80,0)',
-    zerolinecolor: 'rgba(26,48,80,0.7)',
-    tickfont:      { color: '#6b8aaa' },
+    gridcolor:     'rgba(51,65,85,0.5)', /* slate-700/50 */
+    linecolor:     'rgba(51,65,85,0.6)',
+    tickcolor:     'rgba(51,65,85,0)',
+    zerolinecolor: 'rgba(51,65,85,0.5)',
+    tickfont:      { color: '#94a3b8', family: "'Fira Code',monospace", size: 11 },
+    automargin:    true,
   },
   yaxis: {
-    gridcolor:     'rgba(26,48,80,0.7)',
-    linecolor:     'rgba(26,48,80,0.8)',
-    tickcolor:     'rgba(26,48,80,0)',
-    zerolinecolor: 'rgba(26,48,80,0.7)',
-    tickfont:      { color: '#6b8aaa' },
+    gridcolor:     'rgba(51,65,85,0.5)',
+    linecolor:     'rgba(51,65,85,0.6)',
+    tickcolor:     'rgba(51,65,85,0)',
+    zerolinecolor: 'rgba(51,65,85,0.5)',
+    tickfont:      { color: '#94a3b8', family: "'Fira Code',monospace", size: 11 },
     title:         { standoff: 14 },
+    automargin:    true,
   },
   legend: {
-    bgcolor:     'rgba(11,22,40,0.75)',
-    bordercolor: 'rgba(26,48,80,0.9)',
+    bgcolor:     'rgba(30,41,59,0.92)',
+    bordercolor: 'rgba(51,65,85,0.7)',
     borderwidth: 1,
-    font:        { color: '#94a3b8', size: 12 },
+    font:        { color: '#cbd5e1', size: 12, family: "'Inter',system-ui,sans-serif" },
     x: 0.01, y: 0.99,
     xanchor: 'left', yanchor: 'top',
   },
   hovermode: 'x unified',
   hoverlabel: {
-    bgcolor:     '#0e1e38',
-    bordercolor: '#1a3050',
-    font:        { color: '#e8f0fc', size: 12 },
+    bgcolor:     '#1e293b',              /* slate-800 */
+    bordercolor: '#334155',              /* slate-700 */
+    font:        { color: '#f1f5f9', size: 12, family: "'Inter',system-ui,sans-serif" },
   },
   dragmode: 'zoom',
 };
@@ -493,16 +595,21 @@ const PLOTLY_CONFIG = {
   toImageButtonOptions: { format: 'png', scale: 2 },
 };
 
-// ── Animate metric value ──────────────────────────────────────────────────────
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ── Animate metric counter ────────────────────────────────────────────────────
 function animateCount(el, target, decimals, suffix) {
   el.classList.remove('loading-val');
+  if (reducedMotion) {
+    el.textContent = (decimals > 0 ? target.toFixed(decimals) : target.toLocaleString()) + (suffix || '');
+    return;
+  }
   const duration = 900;
   const start    = performance.now();
-  const from     = 0;
   function step(now) {
-    const t = Math.min((now - start) / duration, 1);
+    const t    = Math.min((now - start) / duration, 1);
     const ease = 1 - Math.pow(1 - t, 3);
-    const val  = from + (target - from) * ease;
+    const val  = target * ease;
     el.textContent = (decimals > 0 ? val.toFixed(decimals) : Math.round(val).toLocaleString()) + (suffix || '');
     if (t < 1) requestAnimationFrame(step);
     else el.textContent = (decimals > 0 ? target.toFixed(decimals) : target.toLocaleString()) + (suffix || '');
@@ -510,7 +617,39 @@ function animateCount(el, target, decimals, suffix) {
   requestAnimationFrame(step);
 }
 
-// ── Fetch data + render ───────────────────────────────────────────────────────
+// ── Swap skeleton → chart ─────────────────────────────────────────────────────
+function revealChart(id) {
+  const skeleton = document.getElementById(id + '-skeleton');
+  const chart    = document.getElementById(id);
+  if (skeleton) skeleton.style.display = 'none';
+  if (chart)    chart.style.display    = '';
+}
+
+// ── Build ±pct confidence band traces ────────────────────────────────────────
+function buildConfidenceBand(timestamps, predicted, pct) {
+  const upper = predicted.map(v => v * (1 + pct));
+  const lower = predicted.map(v => v * (1 - pct));
+  return [
+    {
+      x: timestamps, y: upper,
+      type: 'scatter', mode: 'lines',
+      line: { color: 'transparent', width: 0 },
+      showlegend: false, hoverinfo: 'skip',
+    },
+    {
+      x: timestamps, y: lower,
+      name: 'Confidence Band (±15%)',
+      type: 'scatter', mode: 'lines',
+      fill: 'tonexty',
+      fillcolor: 'rgba(129,140,248,0.09)',   /* indigo-400/9% */
+      line: { color: 'transparent', width: 0 },
+      showlegend: true,
+      hovertemplate: '±15% band<extra></extra>',
+    },
+  ];
+}
+
+// ── Fetch + render ────────────────────────────────────────────────────────────
 fetch('/api/data')
   .then(r => {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -519,74 +658,89 @@ fetch('/api/data')
   .then(data => {
     const { timestamps, actual, predicted, load, metrics } = data;
 
-    // Metric cards
     animateCount(document.getElementById('metric-rmse'), metrics.rmse,    0);
     animateCount(document.getElementById('metric-r2'),   metrics.r2,      4);
     animateCount(document.getElementById('metric-n'),    metrics.n_points, 0);
 
-    // ── Chart 1: Solar Actual vs Predicted ─────────────────────────────
+    // Chart 1 — Solar actual vs predicted + confidence band
     const solarTraces = [
+      ...buildConfidenceBand(timestamps, predicted, 0.15),
       {
-        x: timestamps,
-        y: actual,
+        x: timestamps, y: actual,
         name: 'Actual',
-        type: 'scatter',
-        mode: 'lines',
-        line: { color: '#00e676', width: 1.4 },
+        type: 'scatter', mode: 'lines',
+        line: { color: '#fbbf24', width: 1.5 },   /* amber-400 */
         hovertemplate: '<b>Actual</b>: %{y:,.0f} MW<extra></extra>',
       },
       {
-        x: timestamps,
-        y: predicted,
+        x: timestamps, y: predicted,
         name: 'XGBoost Predicted',
-        type: 'scatter',
-        mode: 'lines',
-        line: { color: '#38bdf8', width: 1.4, dash: 'dot' },
+        type: 'scatter', mode: 'lines',
+        line: { color: '#818cf8', width: 1.5, dash: 'dot' },   /* indigo-400 */
         hovertemplate: '<b>Predicted</b>: %{y:,.0f} MW<extra></extra>',
       },
     ];
 
+    revealChart('chart-solar');
     Plotly.newPlot('chart-solar', solarTraces, {
       ...SHARED_LAYOUT,
       yaxis: {
         ...SHARED_LAYOUT.yaxis,
-        title: { text: 'Solar Generation (MW)', font: { color: '#6b8aaa', size: 12 }, standoff: 14 },
+        title: { text: 'Solar Generation (MW)', font: { color: '#94a3b8', size: 12 }, standoff: 14 },
       },
     }, PLOTLY_CONFIG);
 
-    // ── Chart 2: Grid Load ──────────────────────────────────────────────
+    // Chart 2 — Grid load
     const loadTraces = [
       {
-        x: timestamps,
-        y: load,
+        x: timestamps, y: load,
         name: 'Grid Load',
-        type: 'scatter',
-        mode: 'lines',
-        line: { color: '#00cfff', width: 1.4 },
+        type: 'scatter', mode: 'lines',
+        line: { color: '#34d399', width: 1.5 },   /* emerald-400 */
         fill: 'tozeroy',
-        fillcolor: 'rgba(0,207,255,0.04)',
+        fillcolor: 'rgba(52,211,153,0.06)',
         hovertemplate: '<b>Load</b>: %{y:,.0f} MW<extra></extra>',
       },
     ];
 
+    revealChart('chart-load');
     Plotly.newPlot('chart-load', loadTraces, {
       ...SHARED_LAYOUT,
       yaxis: {
         ...SHARED_LAYOUT.yaxis,
-        title: { text: 'Electricity Load (MW)', font: { color: '#6b8aaa', size: 12 }, standoff: 14 },
+        title: { text: 'Electricity Load (MW)', font: { color: '#94a3b8', size: 12 }, standoff: 14 },
       },
     }, PLOTLY_CONFIG);
   })
   .catch(err => {
     console.error('Data fetch failed:', err);
+
     ['chart-solar', 'chart-load'].forEach(id => {
-      document.getElementById(id).innerHTML = `
-        <div class="chart-loading">
-          <span style="color:#ff5252;font-size:0.9rem;">
-            ⚠ Failed to load data — is the Flask server running on port 5000?
+      const skeleton = document.getElementById(id + '-skeleton');
+      if (skeleton) skeleton.style.display = 'none';
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.display = '';
+      el.innerHTML = `
+        <div role="alert" style="display:flex;align-items:center;justify-content:center;
+             height:100%;flex-direction:column;gap:0.75rem;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+               fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span style="color:#f87171;font-size:0.9rem;">
+            Failed to load data — is the Flask server running?
           </span>
-          <span style="font-size:0.75rem;">Error: ${err.message}</span>
+          <span style="font-size:0.75rem;color:#64748b;">${err.message}</span>
         </div>`;
+    });
+
+    ['metric-rmse', 'metric-r2', 'metric-n'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.classList.remove('loading-val'); el.textContent = 'N/A'; }
     });
   });
 </script>
